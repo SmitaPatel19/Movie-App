@@ -25,8 +25,8 @@ class TVMovies extends StatelessWidget {
         children: [
           const ModifiedText(
             text: 'TV Shows',
-            size: 26,
-            color: Colors.deepPurple,
+            size: 24,
+
           ),
           SizedBox(height: 10),
           Container(
@@ -45,7 +45,7 @@ class TVMovies extends StatelessWidget {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                              builder: (context) => MovieDetailPage(movie: movie)
+                              builder: (context) => MovieDetailPage(movie: movie, onFavoriteToggle: onFavoriteToggle, isFavorite: isFavorite)
                           ),
                         );
                       },
@@ -73,7 +73,7 @@ class TVMovies extends StatelessWidget {
                                     child: IconButton(
                                       icon: Icon(
                                         isFav ? Icons.favorite : Icons.favorite_border,
-                                        color: Colors.red,
+                                        color: isFav? Colors.red : Colors.white,
                                       ),
                                       onPressed: () => onFavoriteToggle(movie),
                                     ),

@@ -39,6 +39,7 @@ dependencies:
   flutter_staggered_animations: ^1.1.1
   tmdb_api:
   google_fonts:
+  share_plus: ^10.1.4
 
 dev_dependencies:
   flutter_test:

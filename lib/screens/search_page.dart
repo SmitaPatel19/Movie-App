@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:movie_app/utils/text.dart';
 import '../model/movie_model.dart';
 import '../widgets/movie_card.dart';
 
@@ -33,8 +35,18 @@ class _SearchPageState extends State<SearchPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.black,
       appBar: AppBar(
-        title: const Text('Search Movies'),
+        backgroundColor: Colors.transparent,
+        leading: IconButton(
+          onPressed: () => Navigator.pop(context),
+          icon: const Icon(
+            Icons.arrow_left,
+            color: Colors.white,
+            size: 35,
+          ),
+        ),
+        title: const ModifiedText(text: 'Search Movies',size: 26,),
       ),
       body: Column(
         children: [
@@ -44,7 +56,11 @@ class _SearchPageState extends State<SearchPage> {
               controller: _searchController,
               decoration: InputDecoration(
                 hintText: 'Search movies...',
-                prefixIcon: const Icon(Icons.search),
+                hintStyle: GoogleFonts.breeSerif(
+                  color: Colors.white,
+                  fontSize: 15,
+                ),
+                prefixIcon: const Icon(Icons.search,color: Colors.white,),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),

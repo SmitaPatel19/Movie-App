@@ -4,7 +4,7 @@ import 'package:movie_app/widgets/toprated.dart';
 import 'package:movie_app/widgets/trending.dart';
 import 'package:movie_app/widgets/tv.dart';
 import '../model/movie_model.dart';
-import '../utils/movie_service.dart';import '../utils/text.dart';
+import '../utils/movie_service.dart';
 import 'favourites_list.dart';
 
 
@@ -61,10 +61,16 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
+        leading: IconButton(
+          onPressed: () => Navigator.pop(context),
+          icon: Icon(Icons.arrow_left, color: Colors.white,size: 40,),
+        ),
         backgroundColor: Colors.transparent,
-        title: ModifiedText(text: "Movie App"),
-        centerTitle: true,
+        // title: ModifiedText(text: "Movie App"),
+        // centerTitle: true,
+        elevation: 0,
         actions: [
           IconButton(
             color: Colors.white,
@@ -75,7 +81,7 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.favorite),
+            icon: const Icon(Icons.favorite,color: Colors.white,),
             onPressed: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => FavoritesPage(movies: [...trendingMovies, ...topRatedMovies, ...tvShows])),
@@ -85,15 +91,18 @@ class _HomePageState extends State<HomePage> {
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
-          : ListView(
-        children: [
-          TopRatedMovies(
-            toprated: topRatedMovies,
+          : CustomScrollView(
+        slivers: [SliverToBoxAdapter(
+          child: TrendingMovies(
+            trending: trendingMovies,
             onFavoriteToggle: _toggleFavorite,
             isFavorite: _isFavorite,
           ),
-          TrendingMovies(
-            trending: trendingMovies,
+        ),
+        SliverList(
+        delegate: SliverChildListDelegate([
+          TopRatedMovies(
+            toprated: topRatedMovies,
             onFavoriteToggle: _toggleFavorite,
             isFavorite: _isFavorite,
           ),
@@ -102,7 +111,9 @@ class _HomePageState extends State<HomePage> {
             onFavoriteToggle: _toggleFavorite,
             isFavorite: _isFavorite,
           ),
-        ],
+        ]),
+        ),
+    ],
       ),
     );
   }

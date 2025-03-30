@@ -1,13 +1,79 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
-
 import '../model/movie_model.dart';
+import '../utils/text.dart';
+import 'package:share_plus/share_plus.dart';
 
-
-class MovieDetailPage extends StatelessWidget {
+class MovieDetailPage extends StatefulWidget {
   final Movie movie;
+  final Function(Movie) onFavoriteToggle;
+  final Future<bool> Function(Movie) isFavorite;
 
-  const MovieDetailPage({Key? key, required this.movie}) : super(key: key);
+  const MovieDetailPage({
+    Key? key,
+    required this.movie,
+    required this.onFavoriteToggle,
+    required this.isFavorite,
+  }) : super(key: key);
+
+  @override
+  State<MovieDetailPage> createState() => _MovieDetailPageState();
+}
+
+class _MovieDetailPageState extends State<MovieDetailPage> {
+  late bool _isFavorite;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _isFavorite = false;
+    _loadFavoriteStatus();
+  }
+
+  Future<void> _loadFavoriteStatus() async {
+    try {
+      final isFav = await widget.isFavorite(widget.movie);
+      if (mounted) {
+        setState(() {
+          _isFavorite = isFav;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isFavorite = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _toggleFavorite() async {
+    if (_isLoading) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Update UI immediately for better UX
+      setState(() {
+        _isFavorite = !_isFavorite;
+      });
+
+      // Call the parent's toggle function
+      await widget.onFavoriteToggle(widget.movie);
+
+      // Verify the actual status after toggle
+      await _loadFavoriteStatus();
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -17,24 +83,45 @@ class MovieDetailPage extends StatelessWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
           onPressed: () => Navigator.pop(context),
+          icon: const Icon(
+            Icons.arrow_left,
+            color: Colors.white,
+            size: 35,
+          ),
         ),
         actions: [
           IconButton(
             icon: const Icon(Icons.share_rounded, color: Colors.white),
             onPressed: () => _shareMovie(context),
           ),
-          IconButton(
-            icon: const Icon(Icons.favorite_border_rounded, color: Colors.white),
-            onPressed: () => _toggleFavorite(context),
-          ),
+          Stack(alignment: Alignment.center, children: [
+            IconButton(
+              icon: Icon(
+                _isFavorite ? Icons.favorite : Icons.favorite_border,
+                color: _isFavorite ? Colors.red : Colors.white,
+                size: 26,
+              ),
+              onPressed: _toggleFavorite,
+            ),
+            if (_isLoading)
+              const Positioned(
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                ),
+              ),
+          ]),
         ],
       ),
       body: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(
-            child: MovieHeaderImage(imageUrl: movie.posterUrl),
+            child: MovieHeaderImage(imageUrl: widget.movie.posterUrl),
           ),
           SliverList(
             delegate: SliverChildListDelegate([
@@ -53,15 +140,14 @@ class MovieDetailPage extends StatelessWidget {
   }
 
   void _shareMovie(BuildContext context) {
-    // Implement share functionality
-    final text = 'Check out ${movie.title} on Movie App!';
-    // Share.share(text); // Uncomment if using the share package
-  }
+    final text = 'Check out "${widget.movie.title}" on Movie App!\n\n'
+        'Rating: ${widget.movie.voteAverage?.toStringAsFixed(1) ?? 'N/A'}\n'
+        'Release Date: ${widget.movie.release_date ?? 'Unknown'}\n\n'
+        'Download the app to see more details!';
 
-  void _toggleFavorite(BuildContext context) {
-    // Implement favorite toggle functionality
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${movie.title} added to favorites')),
+    Share.share(
+      text,
+      subject: 'Movie Recommendation: ${widget.movie.title}',
     );
   }
 
@@ -71,22 +157,19 @@ class MovieDetailPage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            movie.title,
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: Colors.deepPurple[800],
-            ),
+          ModifiedText(
+            text: widget.movie.title,
           ),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
             runSpacing: 4,
             children: [
-              if (movie.voteAverage != null)
-                _buildInfoChip('Rating: ${movie.voteAverage?.toStringAsFixed(1)}'),
-              if (movie.release_date != null)
-                _buildInfoChip('Released: ${movie.release_date}'),
+              if (widget.movie.voteAverage != null)
+                _buildInfoChip(
+                    'Rating: ${widget.movie.voteAverage?.toStringAsFixed(1)}'),
+              if (widget.movie.release_date != null)
+                _buildInfoChip('Released: ${widget.movie.release_date}'),
             ],
           ),
         ],
@@ -96,11 +179,12 @@ class MovieDetailPage extends StatelessWidget {
 
   Widget _buildInfoChip(String text) {
     return Chip(
-      label: Text(
-        text,
-        style: const TextStyle(fontSize: 12),
+      label: ModifiedText(
+        text: text,
+        size: 12,
+        color: Colors.black,
       ),
-      backgroundColor: Colors.deepPurple[50],
+      backgroundColor: Colors.white60,
       visualDensity: VisualDensity.compact,
     );
   }
@@ -118,67 +202,28 @@ class MovieDetailPage extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Text(
-                movie.overview ?? 'No description available',
+                widget.movie.overview ?? 'No description available',
+
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: Colors.grey[800],
-                  height: 1.5,
-                ),
+                      color: Colors.white70,
+                      height: 1.5,
+                    ),
               ),
             ),
             const SizedBox(height: 24),
             const Divider(height: 1, thickness: 1),
             const SizedBox(height: 16),
-            ..._buildInfoRows(),
           ],
         ),
       ),
     );
   }
 
-  List<Widget> _buildInfoRows() {
-    return [
-      // if (movie.genres != null && movie.genres!.isNotEmpty)
-      //   _buildInfoRow('Genres', movie.genres!.join(', ')),
-      // if (movie.originalLanguage != null)
-      //   _buildInfoRow('Language', movie.originalLanguage!.toUpperCase()),
-      // if (movie.runtime != null)
-      //   _buildInfoRow('Runtime', '${movie.runtime} minutes'),
-    ];
-  }
-
-  Widget _buildInfoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 120,
-            child: Text(
-              label,
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: TextStyle(
-                color: Colors.grey[800],
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildGallerySection(BuildContext context) {
-    // For now using the same image, but you can replace with actual gallery images
-    final galleryImages = [movie.posterUrl, movie.backdropUrl ?? movie.posterUrl];
+    final galleryImages = [
+      widget.movie.posterUrl,
+      widget.movie.backdropUrl ?? widget.movie.posterUrl
+    ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -188,9 +233,9 @@ class MovieDetailPage extends StatelessWidget {
           child: Text(
             'Gallery'.toUpperCase(),
             style: TextStyle(
-              color: Colors.deepPurple[800],
+              color: Colors.white,
               fontWeight: FontWeight.bold,
-              fontSize: 16,
+              fontSize: 18,
               letterSpacing: 1.2,
             ),
           ),
@@ -206,7 +251,7 @@ class MovieDetailPage extends StatelessWidget {
             itemBuilder: (context, index) => ClipRRect(
               borderRadius: BorderRadius.circular(12),
               child: AspectRatio(
-                aspectRatio: 2/3,
+                aspectRatio: 2 / 3,
                 child: Image.network(
                   galleryImages[index],
                   fit: BoxFit.cover,
@@ -239,19 +284,19 @@ class MovieHeaderImage extends StatelessWidget {
           children: [
             SizedBox(
               width: MediaQuery.of(context).size.width,
-              height: 300,
+              height: 350,
               child: imageUrl != null
                   ? Image.network(
-                imageUrl!,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _buildPlaceholder(),
-              )
+                      imageUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => _buildPlaceholder(),
+                    )
                   : _buildPlaceholder(),
             ),
             const Icon(
               Icons.play_circle_outline,
               size: 100,
-              color: Colors.white54,
+              color: Colors.white70,
             ),
           ],
         ),
