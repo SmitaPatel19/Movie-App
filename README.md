@@ -151,14 +151,6 @@ lib/
 
 ---
 
-## 📈 Future Improvements
-- User authentication
-- Watchlist functionality
-- Recommendations based on favorites
-- Dark/light theme toggle
-
----
-
 ## 🎨 Customization
 
 Want to tweak the app? Here’s where to start:
